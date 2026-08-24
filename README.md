@@ -267,6 +267,7 @@ ProofShot automatically detects errors from server logs across 10+ languages: Ja
 ## Documentation
 
 - **[Architecture](docs/architecture.md)** — How ProofShot works under the hood, why agent-browser was chosen, the session lifecycle, viewer internals, and design decisions.
+- **[Alvaro port backlog](docs/alvaro-port.md)** — Behaviors worth taking from `alvarohulse/proofshot`. Do not merge that fork.
 - **[Test Apps](docs/test-apps.md)** — Three sample apps with ready-to-use prompts for testing ProofShot end-to-end across different UI patterns (SaaS dashboard, kanban board, chat interface).
 
 ## Contributing
