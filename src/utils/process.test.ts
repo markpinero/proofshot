@@ -7,6 +7,7 @@ import {
   getShellExecutable,
   parseWindowsNetstatOutput,
   readCommandVersion,
+  processIdentityMatches,
 } from './process.js';
 
 describe('getShellExecutable', () => {
@@ -22,6 +23,15 @@ describe('getShellExecutable', () => {
 
   it('falls back to /bin/sh on Unix when SHELL is missing', () => {
     expect(getShellExecutable('linux', {})).toBe('/bin/sh');
+  });
+});
+
+describe('process ownership', () => {
+  it('requires PID, start time, command identity, and ownership token', () => {
+    const expected = { pid: 42, startTime: 'Sat Aug 30 12:00:00 2026', command: 'ignored', ownershipToken: 'owner-123' };
+    expect(processIdentityMatches({ pid: 42, startTime: expected.startTime, command: 'node log-pump.js --proofshot-owner=owner-123' }, expected)).toBe(true);
+    expect(processIdentityMatches({ pid: 42, startTime: 'later', command: 'node log-pump.js --proofshot-owner=owner-123' }, expected)).toBe(false);
+    expect(processIdentityMatches({ pid: 42, startTime: expected.startTime, command: 'node unrelated.js owner-123' }, expected)).toBe(false);
   });
 });
 
@@ -129,16 +139,25 @@ describe('findPidsListeningOnPort', () => {
   });
 
   it('parses lsof output on POSIX', () => {
-    const execFn = vi.fn().mockReturnValue('111\n222\n');
+    const execFn = vi.fn().mockReturnValue('111\n222\n111\n');
 
     expect(findPidsListeningOnPort(3000, 'linux', execFn as never)).toEqual([111, 222]);
-    expect(execFn).toHaveBeenCalledWith('lsof -ti:3000', expect.anything());
+    expect(execFn).toHaveBeenCalledWith(
+      'lsof -nP -a -iTCP:3000 -sTCP:LISTEN -t',
+      expect.anything(),
+    );
   });
 
   it('returns no pids when the lookup command is unavailable', () => {
     const execFn = vi.fn().mockImplementation(() => {
       throw new Error('lsof: command not found');
     });
+
+    expect(findPidsListeningOnPort(3000, 'linux', execFn as never)).toEqual([]);
+  });
+
+  it('returns no pids when lsof returns empty output', () => {
+    const execFn = vi.fn().mockReturnValue('');
 
     expect(findPidsListeningOnPort(3000, 'linux', execFn as never)).toEqual([]);
   });
